@@ -27,15 +27,15 @@ func registerKogitoJobsServiceSteps(s *godog.Suite, data *Data) {
 }
 
 func (data *Data) installKogitoJobsServiceWithReplicas(replicas int) error {
-	return framework.InstallKogitoJobsService(data.Namespace, framework.GetDefaultInstallerType(), replicas, false)
+	return framework.KogitoJobsServiceInstallationHandler(data.Namespace, framework.GetDefaultInstallerType(), replicas, false).Install()
 }
 
 func (data *Data) installKogitoJobsServiceWithReplicasAndPersistence(replicas int) error {
-	return framework.InstallKogitoJobsService(data.Namespace, framework.GetDefaultInstallerType(), replicas, true)
+	return framework.KogitoJobsServiceInstallationHandler(data.Namespace, framework.GetDefaultInstallerType(), replicas, true).Install()
 }
 
 func (data *Data) kogitoJobsServiceHasPodsRunningWithinMinutes(pods, timeoutInMin int) error {
-	return framework.WaitForKogitoJobsService(data.Namespace, pods, timeoutInMin)
+	return framework.KogitoJobsService(data.Namespace, pods).WaitForService(timeoutInMin)
 }
 
 func (data *Data) scaleKogitoJobsServiceToPodsWithinMinutes(nbPods, timeoutInMin int) error {
@@ -43,5 +43,5 @@ func (data *Data) scaleKogitoJobsServiceToPodsWithinMinutes(nbPods, timeoutInMin
 	if err != nil {
 		return err
 	}
-	return framework.WaitForKogitoJobsService(data.Namespace, nbPods, timeoutInMin)
+	return framework.KogitoJobsService(data.Namespace, nbPods).WaitForService(timeoutInMin)
 }

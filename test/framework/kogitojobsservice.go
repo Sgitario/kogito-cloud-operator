@@ -1,4 +1,4 @@
-// Copyright 2019 Red Hat, Inc. and/or its affiliates
+// Copyright 2020 Red Hat, Inc. and/or its affiliates
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,94 +16,37 @@ package framework
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/kiegroup/kogito-cloud-operator/pkg/apis/app/v1alpha1"
 	"github.com/kiegroup/kogito-cloud-operator/pkg/client/kubernetes"
-	"github.com/kiegroup/kogito-cloud-operator/pkg/framework"
+	"github.com/kiegroup/kogito-cloud-operator/pkg/client/meta"
 	"github.com/kiegroup/kogito-cloud-operator/pkg/infrastructure"
 	"github.com/kiegroup/kogito-cloud-operator/test/config"
-	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// InstallKogitoJobsService deploy the Kogito Jobs service
-func InstallKogitoJobsService(namespace string, installerType InstallerType, replicas int, persistence bool) error {
-	GetLogger(namespace).Infof("%s install Kogito Jobs Service with %d replicas and persistence %v", installerType, replicas, persistence)
-	switch installerType {
-	case CLIInstallerType:
-		return cliInstallKogitoJobsService(namespace, replicas, persistence)
-	case CRInstallerType:
-		return crInstallKogitoJobsService(namespace, replicas, persistence)
-	default:
-		panic(fmt.Errorf("Unknown installer type %s", installerType))
+// KogitoJobsServiceInstallationHandler returns the installation service for the Kogito Jobs Service
+func KogitoJobsServiceInstallationHandler(namespace string, installerType InstallerType, replicas int, persistence bool) *ProtoKogitoInstallService {
+	return &ProtoKogitoInstallService{
+		installerType:      installerType,
+		persistence:        persistence,
+		imageTag:           getJobsServiceImageTag(),
+		cliName:            "jobs-service",
+		BuildCrResource:    buildCrJobsService,
+		ProtoKogitoService: *KogitoJobsService(namespace, replicas),
 	}
 }
 
-func crInstallKogitoJobsService(namespace string, replicas int, persistence bool) error {
-	service := getJobsServiceStub(namespace, int32(replicas), persistence)
-
-	if _, err := kubernetes.ResourceC(kubeClient).CreateIfNotExists(service); err != nil {
-		return fmt.Errorf("Error creating Kogito jobs service: %v", err)
+// KogitoJobsService returns the service for the Kogito Jobs Service
+func KogitoJobsService(namespace string, replicas int) *ProtoKogitoService {
+	return &ProtoKogitoService{
+		label:       "Kogito Jobs Service",
+		namespace:   namespace,
+		replicas:    replicas,
+		serviceName: infrastructure.DefaultJobsServiceName,
 	}
-	return nil
-}
-
-func cliInstallKogitoJobsService(namespace string, replicas int, persistence bool) error {
-	cmd := []string{"install", "jobs-service"}
-
-	if persistence {
-		cmd = append(cmd, "--enable-persistence")
-	}
-
-	cmd = append(cmd, "--image", framework.ConvertImageToImageTag(getJobsServiceImageTag()))
-	cmd = append(cmd, "--replicas", strconv.Itoa(replicas))
-
-	_, err := ExecuteCliCommandInNamespace(namespace, cmd...)
-	return err
-}
-
-func getJobsServiceImageTag() v1alpha1.Image {
-	if len(config.GetJobsServiceImageTag()) > 0 {
-		return framework.ConvertImageTagToImage(config.GetJobsServiceImageTag())
-	}
-
-	image := framework.ConvertImageTagToImage(infrastructure.DefaultJobsServiceImageFullTag)
-	image.Tag = config.GetServicesImageVersion()
-	return image
-}
-
-// GetKogitoJobsService retrieves the running jobs service
-func GetKogitoJobsService(namespace string) (*v1alpha1.KogitoJobsService, error) {
-	service := &v1alpha1.KogitoJobsService{}
-	if exists, err := kubernetes.ResourceC(kubeClient).FetchWithKey(types.NamespacedName{Name: infrastructure.DefaultJobsServiceName, Namespace: namespace}, service); err != nil && !errors.IsNotFound(err) {
-		return nil, fmt.Errorf("Error while trying to look for Kogito jobs service: %v ", err)
-	} else if !exists {
-		return nil, nil
-	}
-	return service, nil
-}
-
-// GetKogitoJobsServiceDeployment retrieves the running jobs service deployment
-func GetKogitoJobsServiceDeployment(namespace string) (*apps.Deployment, error) {
-	return GetDeployment(namespace, infrastructure.DefaultJobsServiceName)
-}
-
-// WaitForKogitoJobsService waits that the jobs service has a certain number of replicas
-func WaitForKogitoJobsService(namespace string, replicas, timeoutInMin int) error {
-	return WaitForOnOpenshift(namespace, "Kogito jobs service running", timeoutInMin,
-		func() (bool, error) {
-			deployment, err := GetKogitoJobsServiceDeployment(namespace)
-			if err != nil {
-				return false, err
-			}
-			if deployment == nil {
-				return false, nil
-			}
-			return deployment.Status.Replicas == int32(replicas) && deployment.Status.AvailableReplicas == int32(replicas), nil
-		})
 }
 
 // SetKogitoJobsServiceReplicas sets the number of replicas for the Kogito Jobs Service
@@ -119,16 +62,36 @@ func SetKogitoJobsServiceReplicas(namespace string, nbPods int32) error {
 	return kubernetes.ResourceC(kubeClient).Update(kogitoJobsService)
 }
 
-func getJobsServiceStub(namespace string, replicas int32, persistence bool) *v1alpha1.KogitoJobsService {
-	service := &v1alpha1.KogitoJobsService{
+// GetKogitoJobsService retrieves the running jobs service
+func GetKogitoJobsService(namespace string) (*v1alpha1.KogitoJobsService, error) {
+	service := &v1alpha1.KogitoJobsService{}
+	if exists, err := kubernetes.ResourceC(kubeClient).FetchWithKey(types.NamespacedName{Name: infrastructure.DefaultJobsServiceName, Namespace: namespace}, service); err != nil && !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("Error while trying to look for Kogito jobs service: %v ", err)
+	} else if !exists {
+		return nil, nil
+	}
+	return service, nil
+}
+
+func getJobsServiceImageTag() string {
+	if len(config.GetJobsServiceImageTag()) > 0 {
+		return config.GetJobsServiceImageTag()
+	}
+
+	return infrastructure.DefaultJobsServiceImageFullTag
+}
+
+func buildCrJobsService(service ProtoKogitoInstallService) meta.ResourceObject {
+	replicas := int32(service.replicas)
+	resource := &v1alpha1.KogitoJobsService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      infrastructure.DefaultJobsServiceName,
-			Namespace: namespace,
+			Namespace: service.namespace,
 		},
 		Spec: v1alpha1.KogitoJobsServiceSpec{
 			KogitoServiceSpec: v1alpha1.KogitoServiceSpec{
 				Replicas: &replicas,
-				Image:    getJobsServiceImageTag(),
+				Image:    service.getImageTag(),
 			},
 		},
 		Status: v1alpha1.KogitoJobsServiceStatus{
@@ -140,11 +103,11 @@ func getJobsServiceStub(namespace string, replicas int32, persistence bool) *v1a
 		},
 	}
 
-	if persistence {
-		service.Spec.InfinispanProperties = v1alpha1.InfinispanConnectionProperties{
+	if service.persistence {
+		resource.Spec.InfinispanProperties = v1alpha1.InfinispanConnectionProperties{
 			UseKogitoInfra: true,
 		}
 	}
 
-	return service
+	return resource
 }
