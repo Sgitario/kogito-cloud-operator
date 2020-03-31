@@ -21,12 +21,12 @@ import (
 
 // RegisterCliSteps register all CLI steps existing
 func registerKogitoManagementConsoleSteps(s *godog.Suite, data *Data) {
-	s.Step(`^"([^"]*)" install Kogito Management Console with (\d+) replicas$`, data.installKogitoManagementConsoleWithReplicas)
+	s.Step(`^Install Kogito Management Console with (\d+) replicas$`, data.installKogitoManagementConsoleWithReplicas)
 	s.Step(`^Kogito Management Console has (\d+) pods running within (\d+) minutes$`, data.kogitoManagementConsoleHasPodsRunningWithinMinutes)
 }
 
-func (data *Data) installKogitoManagementConsoleWithReplicas(installerType string, replicas int) error {
-	return framework.InstallKogitoManagementConsole(data.Namespace, framework.MustParseInstallerType(installerType), replicas)
+func (data *Data) installKogitoManagementConsoleWithReplicas(replicas int) error {
+	return framework.InstallKogitoManagementConsole(data.Namespace, framework.GetDefaultInstallerType(), replicas)
 }
 
 func (data *Data) kogitoManagementConsoleHasPodsRunningWithinMinutes(pods, timeoutInMin int) error {

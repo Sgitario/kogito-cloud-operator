@@ -189,8 +189,8 @@ func GetJobsServiceImageTag() string {
 	return env.jobsServiceImageTag
 }
 
-// GetConfigManagementConsoleImageTag return the Kogito Management Console image tag
-func GetConfigManagementConsoleImageTag() string {
+// GetManagementConsoleImageTag return the Kogito Management Console image tag
+func GetManagementConsoleImageTag() string {
 	return env.mgmtConsoleImageTag
 }
 

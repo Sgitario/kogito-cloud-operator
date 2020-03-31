@@ -21,6 +21,7 @@ import (
 	"github.com/kiegroup/kogito-cloud-operator/pkg/client/kubernetes"
 	"github.com/kiegroup/kogito-cloud-operator/pkg/framework"
 	"github.com/kiegroup/kogito-cloud-operator/pkg/infrastructure"
+	"github.com/kiegroup/kogito-cloud-operator/test/config"
 	apps "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -46,18 +47,18 @@ func crInstallKogitoManagementConsole(namespace string, replicas int) error {
 }
 
 func getManagementConsoleImageTag() v1alpha1.Image {
-	if len(GetConfigManagementConsoleImageTag()) > 0 {
-		return framework.ConvertImageTagToImage(GetConfigManagementConsoleImageTag())
+	if len(config.GetManagementConsoleImageTag()) > 0 {
+		return framework.ConvertImageTagToImage(config.GetManagementConsoleImageTag())
 	}
 
-	image := framework.ConvertImageTagToImage(infrastructure.DefaultManagementConsoleImageFullTag)
-	image.Tag = GetConfigServicesImageVersion()
+	image := framework.ConvertImageTagToImage(infrastructure.DefaultMgmtConsoleImageFullTag)
+	image.Tag = config.GetServicesImageVersion()
 	return image
 }
 
 // GetKogitoManagementConsoleDeployment retrieves the running management console deployment
 func GetKogitoManagementConsoleDeployment(namespace string) (*apps.Deployment, error) {
-	return GetDeployment(namespace, infrastructure.DefaultManagementConsoleName)
+	return GetDeployment(namespace, infrastructure.DefaultMgmtConsoleName)
 }
 
 // WaitForKogitoManagementConsole waits that the management console has a certain number of replicas
@@ -78,7 +79,7 @@ func WaitForKogitoManagementConsole(namespace string, replicas, timeoutInMin int
 func getManagementConsoleStub(namespace string, replicas int32) *v1alpha1.KogitoMgmtConsole {
 	service := &v1alpha1.KogitoMgmtConsole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      infrastructure.DefaultManagementConsoleName,
+			Name:      infrastructure.DefaultMgmtConsoleName,
 			Namespace: namespace,
 		},
 		Spec: v1alpha1.KogitoMgmtConsoleSpec{
