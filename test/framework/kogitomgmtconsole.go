@@ -22,46 +22,43 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// KogitoManagementConsoleInstallationHandler returns the installation service for the Kogito Management Service
-func KogitoManagementConsoleInstallationHandler(namespace string, installerType InstallerType, replicas int) *ProtoKogitoInstallService {
-	return &ProtoKogitoInstallService{
-		installerType:      installerType,
-		persistence:        false,
-		imageTag:           getManagementConsoleImageTag(),
-		BuildCrResource:    buildCrManagementConsole,
-		ProtoKogitoService: *KogitoManagementConsole(namespace, replicas),
-	}
+// KogitoManagementConsoleInstall returns the installation service for the Kogito Management Console
+func KogitoManagementConsoleInstall(namespace string, installerType InstallerType, replicas int) error {
+	image := getManagementConsoleImage()
+	cliName := "mgmt-console"
+	crResource := buildCrManagementConsole(namespace, int32(replicas), image)
+	persistence := false
+	return InstallService(namespace, getManagementConsoleServiceName(), replicas, installerType, image, cliName, crResource, persistence)
 }
 
-// KogitoManagementConsole returns the service for the Kogito Management Service
-func KogitoManagementConsole(namespace string, replicas int) *ProtoKogitoService {
-	return &ProtoKogitoService{
-		label:       "Kogito Management Console",
-		namespace:   namespace,
-		replicas:    replicas,
-		serviceName: infrastructure.DefaultMgmtConsoleName,
-	}
+// KogitoManagementConsoleWaitForService wait for Kogito Management Console to be deployed
+func KogitoManagementConsoleWaitForService(namespace string, replicas int, timeoutInMin int) error {
+	return WaitForService(namespace, getManagementConsoleServiceName(), replicas, timeoutInMin)
 }
 
-func getManagementConsoleImageTag() string {
+func getManagementConsoleServiceName() string {
+	return infrastructure.DefaultMgmtConsoleName
+}
+
+func getManagementConsoleImage() v1alpha1.Image {
+	var imageTag = infrastructure.DefaultMgmtConsoleImageFullTag
 	if len(config.GetManagementConsoleImageTag()) > 0 {
-		return config.GetManagementConsoleImageTag()
+		imageTag = config.GetManagementConsoleImageTag()
 	}
 
-	return infrastructure.DefaultMgmtConsoleImageFullTag
+	return BuildImage(imageTag)
 }
 
-func buildCrManagementConsole(service ProtoKogitoInstallService) meta.ResourceObject {
-	replicas := int32(service.replicas)
+func buildCrManagementConsole(namespace string, replicas int32, image v1alpha1.Image) meta.ResourceObject {
 	resource := &v1alpha1.KogitoMgmtConsole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      infrastructure.DefaultMgmtConsoleName,
-			Namespace: service.namespace,
+			Namespace: namespace,
 		},
 		Spec: v1alpha1.KogitoMgmtConsoleSpec{
 			KogitoServiceSpec: v1alpha1.KogitoServiceSpec{
 				Replicas: &replicas,
-				Image:    service.getImageTag(),
+				Image:    image,
 			},
 		},
 		Status: v1alpha1.KogitoMgmtConsoleStatus{

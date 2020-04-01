@@ -22,47 +22,43 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// KogitoDataIndexInstallationHandler returns the installation service for the Kogito Data Index
-func KogitoDataIndexInstallationHandler(namespace string, installerType InstallerType, replicas int) *ProtoKogitoInstallService {
-	return &ProtoKogitoInstallService{
-		installerType:      installerType,
-		persistence:        false,
-		imageTag:           getDataIndexImageTag(),
-		cliName:            "data-index",
-		BuildCrResource:    buildCrManagementConsole,
-		ProtoKogitoService: *KogitoDataIndex(namespace, replicas),
-	}
+// KogitoDataIndexInstall returns the installation service for the Kogito Data Index
+func KogitoDataIndexInstall(namespace string, installerType InstallerType, replicas int) error {
+	image := getDataIndexImage()
+	cliName := "data-index"
+	crResource := buildCrDataIndex(namespace, int32(replicas), image)
+	persistence := false
+	return InstallService(namespace, getDataIndexServiceName(), replicas, installerType, image, cliName, crResource, persistence)
 }
 
-// KogitoDataIndex returns the service for the Kogito Data Index
-func KogitoDataIndex(namespace string, replicas int) *ProtoKogitoService {
-	return &ProtoKogitoService{
-		label:       "Kogito Data Index",
-		namespace:   namespace,
-		replicas:    replicas,
-		serviceName: infrastructure.DefaultDataIndexName,
-	}
+// KogitoDataIndexWaitForService wait for Kogito Data Index to be deployed
+func KogitoDataIndexWaitForService(namespace string, replicas int, timeoutInMin int) error {
+	return WaitForService(namespace, getDataIndexServiceName(), replicas, timeoutInMin)
 }
 
-func getDataIndexImageTag() string {
+func getDataIndexServiceName() string {
+	return infrastructure.DefaultDataIndexName
+}
+
+func getDataIndexImage() v1alpha1.Image {
+	var imageTag = infrastructure.DefaultDataIndexImageFullTag
 	if len(config.GetDataIndexImageTag()) > 0 {
-		return config.GetDataIndexImageTag()
+		imageTag = config.GetDataIndexImageTag()
 	}
 
-	return infrastructure.DefaultDataIndexImageFullTag
+	return BuildImage(imageTag)
 }
 
-func buildCrDataIndex(service ProtoKogitoInstallService) meta.ResourceObject {
-	replicas := int32(service.replicas)
+func buildCrDataIndex(namespace string, replicas int32, image v1alpha1.Image) meta.ResourceObject {
 	resource := &v1alpha1.KogitoDataIndex{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      infrastructure.DefaultDataIndexName,
-			Namespace: service.namespace,
+			Namespace: namespace,
 		},
 		Spec: v1alpha1.KogitoDataIndexSpec{
 			KogitoServiceSpec: v1alpha1.KogitoServiceSpec{
 				Replicas: &replicas,
-				Image:    service.getImageTag(),
+				Image:    image,
 			},
 		},
 		Status: v1alpha1.KogitoDataIndexStatus{

@@ -27,26 +27,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// KogitoJobsServiceInstallationHandler returns the installation service for the Kogito Jobs Service
-func KogitoJobsServiceInstallationHandler(namespace string, installerType InstallerType, replicas int, persistence bool) *ProtoKogitoInstallService {
-	return &ProtoKogitoInstallService{
-		installerType:      installerType,
-		persistence:        persistence,
-		imageTag:           getJobsServiceImageTag(),
-		cliName:            "jobs-service",
-		BuildCrResource:    buildCrJobsService,
-		ProtoKogitoService: *KogitoJobsService(namespace, replicas),
-	}
+// KogitoJobsServiceInstall returns the installation service for the Kogito Jobs Service
+func KogitoJobsServiceInstall(namespace string, installerType InstallerType, replicas int, persistence bool) error {
+	image := getJobsServiceImage()
+	cliName := "jobs-service"
+	crResource := buildCrJobsService(namespace, int32(replicas), image, persistence)
+	return InstallService(namespace, getJobsServiceName(), replicas, installerType, image, cliName, crResource, persistence)
 }
 
-// KogitoJobsService returns the service for the Kogito Jobs Service
-func KogitoJobsService(namespace string, replicas int) *ProtoKogitoService {
-	return &ProtoKogitoService{
-		label:       "Kogito Jobs Service",
-		namespace:   namespace,
-		replicas:    replicas,
-		serviceName: infrastructure.DefaultJobsServiceName,
-	}
+// KogitoJobsServiceWaitForService wait for Kogito Jobs Service to be deployed
+func KogitoJobsServiceWaitForService(namespace string, replicas int, timeoutInMin int) error {
+	return WaitForService(namespace, getJobsServiceName(), replicas, timeoutInMin)
 }
 
 // SetKogitoJobsServiceReplicas sets the number of replicas for the Kogito Jobs Service
@@ -65,7 +56,7 @@ func SetKogitoJobsServiceReplicas(namespace string, nbPods int32) error {
 // GetKogitoJobsService retrieves the running jobs service
 func GetKogitoJobsService(namespace string) (*v1alpha1.KogitoJobsService, error) {
 	service := &v1alpha1.KogitoJobsService{}
-	if exists, err := kubernetes.ResourceC(kubeClient).FetchWithKey(types.NamespacedName{Name: infrastructure.DefaultJobsServiceName, Namespace: namespace}, service); err != nil && !errors.IsNotFound(err) {
+	if exists, err := kubernetes.ResourceC(kubeClient).FetchWithKey(types.NamespacedName{Name: getJobsServiceName(), Namespace: namespace}, service); err != nil && !errors.IsNotFound(err) {
 		return nil, fmt.Errorf("Error while trying to look for Kogito jobs service: %v ", err)
 	} else if !exists {
 		return nil, nil
@@ -73,25 +64,29 @@ func GetKogitoJobsService(namespace string) (*v1alpha1.KogitoJobsService, error)
 	return service, nil
 }
 
-func getJobsServiceImageTag() string {
-	if len(config.GetJobsServiceImageTag()) > 0 {
-		return config.GetJobsServiceImageTag()
-	}
-
-	return infrastructure.DefaultJobsServiceImageFullTag
+func getJobsServiceName() string {
+	return infrastructure.DefaultJobsServiceName
 }
 
-func buildCrJobsService(service ProtoKogitoInstallService) meta.ResourceObject {
-	replicas := int32(service.replicas)
+func getJobsServiceImage() v1alpha1.Image {
+	imageTag := infrastructure.DefaultJobsServiceImageFullTag
+	if len(config.GetJobsServiceImageTag()) > 0 {
+		imageTag = config.GetJobsServiceImageTag()
+	}
+
+	return BuildImage(imageTag)
+}
+
+func buildCrJobsService(namespace string, replicas int32, image v1alpha1.Image, persistence bool) meta.ResourceObject {
 	resource := &v1alpha1.KogitoJobsService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      infrastructure.DefaultJobsServiceName,
-			Namespace: service.namespace,
+			Namespace: namespace,
 		},
 		Spec: v1alpha1.KogitoJobsServiceSpec{
 			KogitoServiceSpec: v1alpha1.KogitoServiceSpec{
 				Replicas: &replicas,
-				Image:    service.getImageTag(),
+				Image:    image,
 			},
 		},
 		Status: v1alpha1.KogitoJobsServiceStatus{
@@ -103,7 +98,7 @@ func buildCrJobsService(service ProtoKogitoInstallService) meta.ResourceObject {
 		},
 	}
 
-	if service.persistence {
+	if persistence {
 		resource.Spec.InfinispanProperties = v1alpha1.InfinispanConnectionProperties{
 			UseKogitoInfra: true,
 		}
