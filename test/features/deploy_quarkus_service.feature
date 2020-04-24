@@ -154,3 +154,41 @@ Feature: Deploy quarkus service
     Examples:
       | native  | minutes |
       | enabled | 20      |
+
+  @usertasks
+  Scenario Outline: Deploy process-quarkus-example service to complete user tasks and native <native>
+    Given Kogito Operator is deployed
+    And Deploy quarkus example service "process-quarkus-example" with configuration:
+      | config | native      | <native> |
+      | config | persistence | disabled |
+    And Kogito application "process-quarkus-example" has 1 pods running within <minutes> minutes
+    And HTTP GET request on service "process-quarkus-example" with path "orders" is successful within 3 minutes
+
+    When HTTP POST request on service "process-quarkus-example" with path "orders" and body:
+      """json
+      {
+        "approver" : "john", 
+        "order" : {
+          "orderNumber" : "12345", 
+          "shipped" : false
+        }
+      }
+      """
+    Then HTTP GET request on service "process-quarkus-example" with path "orders" should return an array of size 1 within 1 minutes
+
+    When Complete "Verify order" task on service "process-quarkus-example" and process with name "orderItems" by user "john" with body:
+	  """json
+	  {}
+    """
+
+    Then HTTP GET request on service "process-quarkus-example" with path "orders" should return an array of size 0 within 1 minutes
+    And HTTP GET request on service "process-quarkus-example" with path "orderItems" should return an array of size 0 within 1 minutes
+
+    Examples:
+      | native   | minutes |
+      | disabled | 10      |
+
+    @native
+    Examples:
+      | native  | minutes |
+      | enabled | 20      |

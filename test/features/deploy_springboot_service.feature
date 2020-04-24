@@ -85,3 +85,31 @@ Feature: Deploy spring boot service
       """
 
     Then GraphQL request on Data Index service returns ProcessInstances processName "orders" within 2 minutes
+
+  @usertasks
+  Scenario: Deploy process-springboot-example service to complete user tasks
+    Given Kogito Operator is deployed
+    And Deploy springboot example service "process-springboot-example" with configuration:
+      | config | persistence | disabled |
+    And Kogito application "process-springboot-example" has 1 pods running within 10 minutes
+    And HTTP GET request on service "process-springboot-example" with path "orders" is successful within 3 minutes
+
+    When HTTP POST request on service "process-springboot-example" with path "orders" and body:
+      """json
+      {
+        "approver" : "john", 
+        "order" : {
+          "orderNumber" : "12345", 
+          "shipped" : false
+        }
+      }
+      """
+    Then HTTP GET request on service "process-springboot-example" with path "orders" should return an array of size 1 within 1 minutes
+
+    When Complete "Verify order" task on service "process-springboot-example" and process with name "orderItems" by user "john" with body:
+	  """json
+	  {}
+    """
+
+    Then HTTP GET request on service "process-springboot-example" with path "orders" should return an array of size 0 within 1 minutes
+    And HTTP GET request on service "process-springboot-example" with path "orderItems" should return an array of size 0 within 1 minutes

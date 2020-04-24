@@ -14,14 +14,41 @@
 
 package framework
 
+import (
+	"fmt"
+	"strings"
+)
+
 // GetTasks retrieves tasks of specific process instance
 func GetTasks(namespace, routeURI, processName, processInstanceID string) (foundTasks map[string]string, err error) {
 	err = ExecuteHTTPRequestWithUnmarshalledResponse(namespace, "GET", routeURI, processName+"/"+processInstanceID+"/tasks", "", "", &foundTasks)
 	return
 }
 
+// GetTasksByUser retrieves tasks of specific process instance and user
+func GetTasksByUser(namespace, routeURI, processName, processInstanceID, user string) (foundTasks map[string]string, err error) {
+	err = ExecuteHTTPRequestWithUnmarshalledResponse(namespace, "GET", routeURI, processName+"/"+processInstanceID+"/tasks?user="+user, "", "", &foundTasks)
+	return
+}
+
 // CompleteTask completes task
 func CompleteTask(namespace, routeURI, processName, processInstanceID, taskName, taskID, bodyFormat, bodyContent string) (err error) {
-	_, err = ExecuteHTTPRequest(namespace, "POST", routeURI, processName+"/"+processInstanceID+"/"+taskName+"/"+taskID, bodyFormat, bodyContent)
+	taskEndpointPath := getTaskEndpointPath(processName, processInstanceID, taskName, taskID)
+	return completeTask(namespace, routeURI, taskEndpointPath, bodyFormat, bodyContent)
+}
+
+// CompleteTaskByUser completes task by user
+func CompleteTaskByUser(namespace, routeURI, processName, processInstanceID, taskName, taskID, user, bodyFormat, bodyContent string) (err error) {
+	taskEndpointPath := getTaskEndpointPath(processName, processInstanceID, taskName, taskID) + "?user=" + user
+	return completeTask(namespace, routeURI, taskEndpointPath, bodyFormat, bodyContent)
+}
+
+func completeTask(namespace, routeURI, taskEndpointPath, bodyFormat, bodyContent string) (err error) {
+	_, err = ExecuteHTTPRequest(namespace, "POST", routeURI, taskEndpointPath, bodyFormat, bodyContent)
 	return
+}
+
+func getTaskEndpointPath(processName, processInstanceID, taskName, taskID string) string {
+	taskName = strings.ReplaceAll(taskName, " ", "_")
+	return fmt.Sprintf("%s/%s/%s/%s", processName, processInstanceID, taskName, taskID)
 }

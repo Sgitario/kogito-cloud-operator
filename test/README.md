@@ -35,6 +35,18 @@ Check the usage of the tests script:
 
 ## Development
 
+### Using JSON expressions
+
+We introduced the golang library [PaesslerAG/jsonpath](github.com/PaesslerAG/jsonpath) to parse expressions in JSON similarly as XPATH expressions. For example, the step:
+
+```
+When parse variable "x" with expression "$[0].id" into variable "y"
+```
+
+This step will parse the content of the variable "x" using the expression "$[0].id", and will set the result in the variable "y". 
+
+To know more about all the supported operations from these expressions, visit [this page](https://goessner.net/articles/JsonPath/).
+
 ### Useful Extensions for VS Code
 
 - [Cucumber (Gherkin)](https://marketplace.visualstudio.com/items?itemName=alexkrechik.cucumberautocomplete))

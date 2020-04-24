@@ -26,6 +26,7 @@ import (
 func registerHTTPSteps(s *godog.Suite, data *Data) {
 	s.Step(`^HTTP GET request on service "([^"]*)" with path "([^"]*)" is successful within (\d+) minutes$`, data.httpGetRequestOnServiceWithPathIsSuccessfulWithinMinutes)
 	s.Step(`^HTTP GET request on service "([^"]*)" with path "([^"]*)" should return an array of size (\d+) within (\d+) minutes$`, data.httpGetRequestOnServiceWithPathShouldReturnAnArrayofSizeWithinMinutes)
+	s.Step(`^HTTP GET request on service "([^"]*)" with path "([^"]*)" is stored in variable "([^"]*)"$`, data.httpGetRequestOnServiceWithPathAndSetVariable)
 	s.Step(`^HTTP GET request on service "([^"]*)" with path "([^"]*)" should contain a string "([^"]*)" within (\d+) minutes$`, data.httpGetRequestOnServiceWithPathShouldContainAstringWithinMinutes)
 	s.Step(`^HTTP POST request on service "([^"]*)" with path "([^"]*)" and body:$`, data.httpPostRequestOnServiceWithPathAndBody)
 	s.Step(`^HTTP POST request on service "([^"]*)" is successful within (\d+) minutes with path "([^"]*)" and body:$`, data.httpPostRequestOnServiceIsSuccessfulWithinMinutesWithPathAndBody)
@@ -38,16 +39,19 @@ func (data *Data) httpGetRequestOnServiceWithPathIsSuccessfulWithinMinutes(servi
 	if err != nil {
 		return err
 	}
-	return framework.WaitForSuccessfulHTTPRequest(data.Namespace, "GET", routeURI, path, "", "", timeoutInMin)
+	return framework.WaitForSuccessfulHTTPRequest(data.Namespace, "GET", routeURI, data.ResolveWithScenarioContext(path), "", "", timeoutInMin)
 }
 
 func (data *Data) httpPostRequestOnServiceWithPathAndBody(serviceName, path string, body *messages.PickleStepArgument_PickleDocString) error {
-	framework.GetLogger(data.Namespace).Infof("httpPostRequestOnServiceWithPathAndBody with service %s, path %s and %s bodyContent %s", serviceName, path, body.GetMediaType(), body.GetContent)
+	path = data.ResolveWithScenarioContext(path)
+	bodyContent := data.ResolveWithScenarioContext(body.GetContent())
+	framework.GetLogger(data.Namespace).Debugf("httpPostRequestOnServiceWithPathAndBody with service %s, path %s and %s bodyContent %s", serviceName, path, body.GetMediaType(), bodyContent)
 	routeURI, err := framework.WaitAndRetrieveRouteURI(data.Namespace, serviceName)
 	if err != nil {
 		return err
 	}
-	if success, err := framework.IsHTTPRequestSuccessful(data.Namespace, "POST", routeURI, path, body.GetMediaType(), body.GetContent()); err != nil {
+
+	if success, err := framework.IsHTTPRequestSuccessful(data.Namespace, "POST", routeURI, path, body.GetMediaType(), bodyContent); err != nil {
 		return err
 	} else if !success {
 		return fmt.Errorf("HTTP POST request to path %s was not successful", path)
@@ -56,12 +60,14 @@ func (data *Data) httpPostRequestOnServiceWithPathAndBody(serviceName, path stri
 }
 
 func (data *Data) httpPostRequestOnServiceIsSuccessfulWithinMinutesWithPathAndBody(serviceName string, timeoutInMin int, path string, body *messages.PickleStepArgument_PickleDocString) error {
-	framework.GetLogger(data.Namespace).Infof("httpPostRequestOnServiceWithPathAndBody with service %s, path %s, %s bodyContent %s and timeout %d", serviceName, path, body.GetMediaType(), body.GetContent(), timeoutInMin)
+	path = data.ResolveWithScenarioContext(path)
+	bodyContent := data.ResolveWithScenarioContext(body.GetContent())
+	framework.GetLogger(data.Namespace).Debugf("httpPostRequestOnServiceIsSuccessfulWithinMinutesWithPathAndBody with service %s, path %s, %s bodyContent %s and timeout %d", serviceName, path, body.GetMediaType(), bodyContent, timeoutInMin)
 	routeURI, err := framework.WaitAndRetrieveRouteURI(data.Namespace, serviceName)
 	if err != nil {
 		return err
 	}
-	return framework.WaitForSuccessfulHTTPRequest(data.Namespace, "POST", routeURI, path, body.GetMediaType(), body.GetContent(), timeoutInMin)
+	return framework.WaitForSuccessfulHTTPRequest(data.Namespace, "POST", routeURI, path, body.GetMediaType(), bodyContent, timeoutInMin)
 }
 
 func (data *Data) httpGetRequestOnServiceWithPathShouldReturnAnArrayofSizeWithinMinutes(serviceName, path string, size, timeoutInMin int) error {
@@ -69,10 +75,29 @@ func (data *Data) httpGetRequestOnServiceWithPathShouldReturnAnArrayofSizeWithin
 	if err != nil {
 		return err
 	}
+
+	path = data.ResolveWithScenarioContext(path)
 	return framework.WaitForOnOpenshift(data.Namespace, fmt.Sprintf("GET request on path %s to return array of size %d", path, size), timeoutInMin,
 		func() (bool, error) {
 			return framework.IsHTTPResponseArraySize(data.Namespace, "GET", routeURI, path, "", "", size)
 		})
+}
+
+func (data *Data) httpGetRequestOnServiceWithPathAndSetVariable(serviceName, path, variableName string) error {
+	path = data.ResolveWithScenarioContext(path)
+	framework.GetLogger(data.Namespace).Debugf("httpGetRequestOnServiceWithPathAndSetVariable with service %s, path %s", serviceName, path)
+	routeURI, err := framework.WaitAndRetrieveRouteURI(data.Namespace, serviceName)
+	if err != nil {
+		return err
+	}
+
+	resultBody, err := framework.ExecuteHTTPRequestWithStringResponse(data.Namespace, "GET", routeURI, path, "", "")
+	if err != nil {
+		return err
+	}
+
+	data.ScenarioContext[variableName] = resultBody
+	return nil
 }
 
 func (data *Data) httpGetRequestOnServiceWithPathShouldContainAstringWithinMinutes(serviceName, path, responseContent string, timeoutInMin int) error {
@@ -81,6 +106,8 @@ func (data *Data) httpGetRequestOnServiceWithPathShouldContainAstringWithinMinut
 		return err
 	}
 
+	path = data.ResolveWithScenarioContext(path)
+	responseContent = data.ResolveWithScenarioContext(path)
 	return framework.WaitForOnOpenshift(data.Namespace, fmt.Sprintf("GET request on path %s to return response content '%s'", path, responseContent), timeoutInMin,
 		func() (bool, error) {
 			return framework.DoesHTTPResponseContain(data.Namespace, "GET", routeURI, path, "", "", responseContent)
@@ -96,14 +123,16 @@ func (data *Data) httpPostRequestsWithReportUsingThreadsOnServiceWithPathAndBody
 }
 
 func executePostRequestsWithOptionalReportingUsingThreadsOnServiceWithPathAndBody(data *Data, requestCount int, threadCount int, report bool, serviceName string, path string, body *messages.PickleStepArgument_PickleDocString) error {
-	framework.GetLogger(data.Namespace).Infof("httpPostRequestsUsingThreadsOnServiceWithPathAndBody with requests %d, threads %d, report %t, service %s, path %s and %s bodyContent %s", requestCount, threadCount, report, serviceName, path, body.GetMediaType(), body.GetContent())
+	path = data.ResolveWithScenarioContext(path)
+	bodyContent := data.ResolveWithScenarioContext(body.GetContent())
+	framework.GetLogger(data.Namespace).Infof("httpPostRequestsUsingThreadsOnServiceWithPathAndBody with requests %d, threads %d, report %t, service %s, path %s and %s bodyContent %s", requestCount, threadCount, report, serviceName, path, body.GetMediaType(), bodyContent)
 	routeURI, err := framework.WaitAndRetrieveRouteURI(data.Namespace, serviceName)
 	if err != nil {
 		return err
 	}
 
 	startTime := time.Now()
-	results, err := framework.ExecuteHTTPRequestsInThreads(data.Namespace, "POST", requestCount, threadCount, routeURI, path, body.GetMediaType(), body.GetContent())
+	results, err := framework.ExecuteHTTPRequestsInThreads(data.Namespace, "POST", requestCount, threadCount, routeURI, path, body.GetMediaType(), bodyContent)
 	duration := time.Since(startTime)
 
 	if err != nil {
