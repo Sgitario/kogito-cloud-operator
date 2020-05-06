@@ -150,12 +150,8 @@ func createHTTPRoute(namespace, serviceName string) error {
 }
 
 // GetRouteURI retrieves a route URI
-func GetRouteURI(namespace, serviceName string) (string, error) {
-	if err := WaitForRoute(namespace, serviceName, 2); err != nil {
-		return "", fmt.Errorf("Route %s does not exist in namespace %s: %v", serviceName, namespace, err)
-	}
-
-	route, err := GetRoute(namespace, serviceName)
+func GetRouteURI(namespace, routeName string) (string, error) {
+	route, err := GetRoute(namespace, routeName)
 	if err != nil || route == nil {
 		return "", err
 	}
@@ -170,6 +166,21 @@ func GetRouteURI(namespace, serviceName string) (string, error) {
 
 	uri := protocol + "://" + host + ":" + port
 	return uri, nil
+}
+
+// WaitAndRetrieveRouteURI waits for a route and returns its URI
+func WaitAndRetrieveRouteURI(namespace, serviceName string) (string, error) {
+	if err := WaitForRoute(namespace, serviceName, 2); err != nil {
+		return "", fmt.Errorf("Route %s does not exist in namespace %s: %v", serviceName, namespace, err)
+	}
+	routeURI, err := GetRouteURI(namespace, serviceName)
+	if err != nil {
+		return "", fmt.Errorf("Error retrieving URI for route %s in namespace %s: %v", serviceName, namespace, err)
+	} else if len(routeURI) <= 0 {
+		return "", fmt.Errorf("No URI found for route name %s in namespace %s: %v", serviceName, namespace, err)
+	}
+	GetLogger(namespace).Debugf("Got route %s\n", routeURI)
+	return routeURI, nil
 }
 
 // WaitForOnOpenshift is a specific method

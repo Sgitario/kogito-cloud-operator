@@ -189,10 +189,6 @@ case $1 in
     addParam "--tests.cr-deployment-only"
     shift
   ;;
-  --cluster)
-    shift
-    if addParamKeyValueIfAccepted "--tests.cluster" ${1}; then shift; fi
-  ;;
   --load_default_config)
     LOAD_DEFAULT_CONFIG=true
     shift

@@ -24,8 +24,6 @@ import (
 func registerKogitoRuntimeSteps(s *godog.Suite, data *Data) {
 	// Deploy steps
 	s.Step(`^Deploy (quarkus|springboot) example runtime service "([^"]*)" with configuration:$`, data.deployExampleRuntimeServiceWithConfiguration)
-	// Service steps
-	s.Step(`^Expose runtime service "([^"]*)"$`, data.exposeRuntimeService)
 }
 
 // Deploy service steps
@@ -37,12 +35,6 @@ func (data *Data) deployExampleRuntimeServiceWithConfiguration(runtimeType, imag
 	}
 
 	return framework.DeployRuntimeService(data.Namespace, framework.GetDefaultInstallerType(), kogitoRuntime)
-}
-
-// Service steps
-
-func (data *Data) exposeRuntimeService(serviceName string) error {
-	return framework.ExposeServiceOnKubernetes(data.Namespace, serviceName)
 }
 
 // Misc methods
