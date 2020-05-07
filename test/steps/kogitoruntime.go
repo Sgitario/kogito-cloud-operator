@@ -35,7 +35,8 @@ func registerKogitoRuntimeSteps(s *godog.Suite, data *Data) {
 
 // Deploy service steps
 
-func (data *Data) deployExampleRuntimeServiceWithConfiguration(runtimeType, imageTag string, table *messages.PickleStepArgument_PickleTable) error {
+func (data *Data) deployExampleRuntimeServiceWithConfiguration(runtimeType, imageTagKey string, table *messages.PickleStepArgument_PickleTable) error {
+	imageTag := data.ScenarioContext[imageTagKey]
 	kogitoRuntime, err := getKogitoRuntimeExamplesStub(data.Namespace, runtimeType, imageTag, table)
 	if err != nil {
 		return err

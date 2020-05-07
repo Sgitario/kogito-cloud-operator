@@ -158,6 +158,24 @@ func DeleteFolder(folder string) error {
 	return os.RemoveAll(folder)
 }
 
+// CreateFile Creates file in folder with supplied content
+func CreateFile(folder, fileName, fileContent string) error {
+	f, err := os.Create(folder + "/" + fileName)
+	if err != nil {
+		return fmt.Errorf("Error creating file %s in folder %s: %v ", fileName, folder, err)
+	}
+
+	if _, err = f.WriteString(fileContent); err != nil {
+		f.Close()
+		return fmt.Errorf("Error writing to file %s in folder %s: %v ", fileName, folder, err)
+	}
+
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("Error closing file %s in folder %s: %v ", fileName, folder, err)
+	}
+	return nil
+}
+
 // MustParseEnabledDisabled parse a boolean string value
 func MustParseEnabledDisabled(value string) bool {
 	switch value {
