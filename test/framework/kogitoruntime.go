@@ -28,7 +28,7 @@ import (
 
 // DeployRuntimeService deploy a Kogito service
 func DeployRuntimeService(namespace string, installerType InstallerType, kogitoRuntime *v1alpha1.KogitoRuntime) error {
-	GetLogger(namespace).Infof("%s deploy %s example %s with name %s, persistence %v, events %v and labels %v", installerType, kogitoRuntime.Spec.Runtime, kogitoRuntime.Name, kogitoRuntime.Spec.InfinispanMeta.InfinispanProperties.UseKogitoInfra, kogitoRuntime.Spec.KafkaMeta.KafkaProperties.UseKogitoInfra, kogitoRuntime.Spec.ServiceLabels)
+	GetLogger(namespace).Infof("%s deploy %s example %s with persistence %v, events %v and labels %v", installerType, kogitoRuntime.Spec.Runtime, kogitoRuntime.Name, kogitoRuntime.Spec.InfinispanMeta.InfinispanProperties.UseKogitoInfra, kogitoRuntime.Spec.KafkaMeta.KafkaProperties.UseKogitoInfra, kogitoRuntime.Spec.ServiceLabels)
 
 	switch installerType {
 	case CLIInstallerType:
