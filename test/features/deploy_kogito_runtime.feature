@@ -10,7 +10,7 @@ Feature: Deploy Kogito Runtime
     When Deploy <runtime> example runtime service "quay.io/jcarvaja/<image>:8.0.0" with configuration:
       | config | persistence | disabled |
     
-    Then Kogito application "<image>" has 1 pods running within 10 minutes
+    Then Kogito Runtime "<image>" has 1 pods running within 10 minutes
     And Service "<image>" with process name "orders" is available within 2 minutes
 
     @springboot
@@ -35,7 +35,7 @@ Feature: Deploy Kogito Runtime
 
     When Deploy <runtime> example runtime service "quay.io/jcarvaja/<image>:8.0.0" with configuration:
       | config | persistence | enabled |
-    And Kogito application "<image>" has 1 pods running within 10 minutes
+    And Kogito Runtime "<image>" has 1 pods running within 10 minutes
     And Start "orders" process on service "<image>" with body:
       """json
       {

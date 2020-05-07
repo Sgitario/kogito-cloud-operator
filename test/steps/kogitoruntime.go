@@ -18,12 +18,16 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/cucumber/messages-go/v10"
 	"github.com/kiegroup/kogito-cloud-operator/pkg/apis/app/v1alpha1"
+	"github.com/kiegroup/kogito-cloud-operator/pkg/controller/kogitoapp/resource"
 	"github.com/kiegroup/kogito-cloud-operator/test/framework"
 )
 
 func registerKogitoRuntimeSteps(s *godog.Suite, data *Data) {
 	// Deploy steps
 	s.Step(`^Deploy (quarkus|springboot) example runtime service "([^"]*)" with configuration:$`, data.deployExampleRuntimeServiceWithConfiguration)
+
+	// Deployment steps
+	s.Step(`^Kogito Runtime "([^"]*)" has (\d+) pods running within (\d+) minutes$`, data.kogitoRuntimeHasPodsRunningWithinMinutes)
 
 	// Kogito Runtime steps
 	s.Step(`^Scale Kogito Runtime "([^"]*)" to (\d+) pods within (\d+) minutes$`, data.scaleKogitoRuntimeToPodsWithinMinutes)
@@ -38,6 +42,17 @@ func (data *Data) deployExampleRuntimeServiceWithConfiguration(runtimeType, imag
 	}
 
 	return framework.DeployRuntimeService(data.Namespace, framework.GetDefaultInstallerType(), kogitoRuntime)
+}
+
+// Deployment steps
+func (data *Data) kogitoRuntimeHasPodsRunningWithinMinutes(dcName string, podNb, timeoutInMin int) error {
+	if err := framework.WaitForDeploymentRunning(data.Namespace, dcName, podNb, timeoutInMin); err != nil {
+		return err
+	}
+
+	// Workaround because two pods are created at the same time when adding a Kogito Runtime.
+	// We need wait for only one (wait until the wrong one is deleted)
+	return framework.WaitForPodsWithLabel(data.Namespace, resource.LabelKeyAppName, dcName, podNb, timeoutInMin)
 }
 
 // Scale steps
