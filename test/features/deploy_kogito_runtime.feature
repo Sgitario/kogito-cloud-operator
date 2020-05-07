@@ -69,3 +69,42 @@ Feature: Deploy Kogito Runtime
     Examples:
       | runtime    | image                                      |
       | quarkus    | process-quarkus-example-native-persistence |
+
+  @events
+  @persistence
+  Scenario Outline: Deploy Scenario with events using Kogito Runtime
+    Given Kogito Operator is deployed with Infinispan and Kafka operators
+    And Install Kogito Data Index with 1 replicas
+
+    When Deploy <runtime> example runtime service "quay.io/jcarvaja/<image>:8.0.0" with configuration:
+      | config | persistence | enabled |
+      | config | events      | enabled  |
+    And Kogito Runtime "<image>" has 1 pods running within 10 minutes
+    And Start "orders" process on service "<image>" with body:
+      """json
+      {
+        "approver" : "john", 
+        "order" : {
+          "orderNumber" : "12345", 
+          "shipped" : false
+        }
+      }
+      """
+    
+    Then GraphQL request on Data Index service returns ProcessInstances processName "orders" within 2 minutes
+
+    @springboot
+    Examples:
+      | runtime    | image                                 |
+      | springboot | process-springboot-example-events     |
+
+    @quarkus
+    Examples:
+      | runtime    | image                                 |
+      | quarkus    | process-quarkus-example-jvm-events    |
+
+    @quarkus
+    @native
+    Examples:
+      | runtime    | image                                 |
+      | quarkus    | process-quarkus-example-native-events |
