@@ -24,6 +24,9 @@ import (
 func registerKogitoRuntimeSteps(s *godog.Suite, data *Data) {
 	// Deploy steps
 	s.Step(`^Deploy (quarkus|springboot) example runtime service "([^"]*)" with configuration:$`, data.deployExampleRuntimeServiceWithConfiguration)
+
+	// Kogito Runtime steps
+	s.Step(`^Scale Kogito Runtime "([^"]*)" to (\d+) pods within (\d+) minutes$`, data.scaleKogitoRuntimeToPodsWithinMinutes)
 }
 
 // Deploy service steps
@@ -35,6 +38,15 @@ func (data *Data) deployExampleRuntimeServiceWithConfiguration(runtimeType, imag
 	}
 
 	return framework.DeployRuntimeService(data.Namespace, framework.GetDefaultInstallerType(), kogitoRuntime)
+}
+
+// Scale steps
+func (data *Data) scaleKogitoRuntimeToPodsWithinMinutes(name string, nbPods, timeoutInMin int) error {
+	err := framework.SetKogitoRuntimeReplicas(data.Namespace, name, nbPods)
+	if err != nil {
+		return err
+	}
+	return framework.WaitForDeploymentRunning(data.Namespace, name, nbPods, timeoutInMin)
 }
 
 // Misc methods
