@@ -59,9 +59,9 @@ const (
 	kogitoAppInfinispanKey     = "infinispan"
 
 	// DataTable Config second column
-	kogitoAppNativeKey             = "native"
-	kogitoAppPersistenceKey        = "persistence"
-	kogitoAppEventsKey             = "events"
+	kogitoAppNativeKey      = "native"
+	kogitoAppPersistenceKey = "persistence"
+	kogitoAppEventsKey      = "events"
 
 	// DataTable Infinispan second column
 	kogitoAppInfinispanUsernameKey = "username"
@@ -171,7 +171,7 @@ func (data *Data) scaleKogitoApplicationToPodsWithinMinutes(name string, nbPods,
 	if err != nil {
 		return err
 	}
-	return framework.WaitForDeploymentConfigRunning(data.Namespace, name, nbPods, timeoutInMin)
+	return framework.WaitForDeploymentRunning(data.Namespace, name, nbPods, timeoutInMin)
 }
 
 // Logging steps
@@ -268,7 +268,7 @@ func configureKogitoAppFromTable(table *messages.PickleStepArgument_PickleTable,
 		kogitoApp.Spec.Build.AddEnvironmentVariable(mavenArgsAppendEnvVar, "-P"+strings.Join(profiles, ","))
 	}
 
-	addDefaultJavaOptionsIfNotProvided(kogitoApp)
+	addDefaultJavaOptionsIfNotProvided(kogitoApp.Spec.KogitoServiceSpec)
 
 	return nil
 }
@@ -318,19 +318,5 @@ func parseKogitoAppInfinispanRow(row *messages.PickleStepArgument_PickleTable_Pi
 		}
 		kogitoApp.Spec.AddEnvironmentVariable(infinispanServerListVariable, getThirdColumn(row))
 		*profilesPtr = append(*profilesPtr, "persistence")
-	}
-}
-
-func addDefaultJavaOptionsIfNotProvided(kogitoApp *framework.KogitoAppHolder) {
-	javaOptionsProvided := false
-	for _, env := range kogitoApp.Spec.Envs {
-		if env.Name == javaOptionsEnvVar {
-			javaOptionsProvided = true
-			break
-		}
-	}
-
-	if !javaOptionsProvided {
-		kogitoApp.Spec.AddEnvironmentVariable(javaOptionsEnvVar, "-Xmx2G")
 	}
 }
