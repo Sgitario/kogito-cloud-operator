@@ -32,6 +32,8 @@ Feature: Deploy Kogito Runtime
       | runtime    | example-service         | profile |
       | quarkus    | process-quarkus-example | native  |
 
+#####
+
   @persistence
   Scenario Outline: Deploy Scenario with persistence using Kogito Runtime
     Given Kogito Operator is deployed with Infinispan operator
@@ -75,6 +77,8 @@ Feature: Deploy Kogito Runtime
     Examples:
       | runtime    | example-service         | profile            |
       | quarkus    | process-quarkus-example | native,persistence |
+
+#####
 
   @events
   @persistence

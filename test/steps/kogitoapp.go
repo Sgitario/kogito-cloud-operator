@@ -171,6 +171,17 @@ func (data *Data) scaleKogitoApplicationToPodsWithinMinutes(name string, nbPods,
 	if err != nil {
 		return err
 	}
+
+	deploymentConfig, err := framework.GetDeploymentConfig(data.Namespace, name)
+	if err != nil {
+		return err
+	}
+	// Remove this condition when KogitoApp is removed
+	// If DeploymentConfig exists then we run test using KogitoApp, so we need to check DeploymentConfig
+	if deploymentConfig != nil {
+		return framework.WaitForDeploymentConfigRunning(data.Namespace, name, nbPods, timeoutInMin)
+	}
+
 	return framework.WaitForDeploymentRunning(data.Namespace, name, nbPods, timeoutInMin)
 }
 
