@@ -20,7 +20,7 @@ const (
 	keycloakServerGroup = "keycloak.org"
 )
 
-// IsKeycloakAvailable checks if Strimzi CRD is available in the cluster
+// IsKeycloakAvailable checks if Keycloak CRD is available in the cluster
 func IsKeycloakAvailable(client *client.Client) bool {
 	return client.HasServerGroup(keycloakServerGroup)
 }
